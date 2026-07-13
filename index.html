@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Lumen AI — Test Auth</title></head>
+<body style="font-family:sans-serif;max-width:420px;margin:60px auto;text-align:center">
+<h1>Lumen AI — Test connexion</h1>
+<p><button id="google" style="padding:12px 20px;font-size:16px">Continuer avec Google</button></p>
+<pre id="out" style="white-space:pre-wrap"></pre>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const client = supabase.createClient(
+    "https://rxesrxpeljcacmvjgonz.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4ZXNyeHBlbGpjYWNtdmpnb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NDI0NTYsImV4cCI6MjA5OTQxODQ1Nn0.4tmbJiBVGCURTgK-44PKX2jgL6995XroPU826bsFd0I"
+  );
+
+  document.getElementById("out").textContent = "Chargement…";
+  client.auth.getSession().then(({ data }) => {
+    document.getElementById("out").textContent = data.session
+      ? "✅ Connecté en tant que : " + data.session.user.email
+      : "Pas encore connecté.";
+  });
+
+  document.getElementById("google").onclick = () => {
+    client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } });
+  };
+</script>
+</body>
+</html>
