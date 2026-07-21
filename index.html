@@ -1,27 +1,232 @@
+
 <!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Lumen AI — Test Auth</title></head>
-<body style="font-family:sans-serif;max-width:420px;margin:60px auto;text-align:center">
-<h1>Lumen AI — Test connexion</h1>
-<p><button id="google" style="padding:12px 20px;font-size:16px">Continuer avec Google</button></p>
-<pre id="out" style="white-space:pre-wrap"></pre>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const client = supabase.createClient(
-    "https://rxesrxpeljcacmvjgonz.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4ZXNyeHBlbGpjYWNtdmpnb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NDI0NTYsImV4cCI6MjA5OTQxODQ1Nn0.4tmbJiBVGCURTgK-44PKX2jgL6995XroPU826bsFd0I"
-  );
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumen AI — Test Assistant</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: linear-gradient(160deg, #0f0a1a, #1a1030 60%, #0f0a1a);
+    color: #f1eefc;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 28px;
+    backdrop-filter: blur(12px);
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: #b3a9d1; font-size: 0.85rem; margin: 0 0 20px; }
+  label { display: block; font-size: 0.8rem; margin: 14px 0 6px; color: #cfc6ea; }
+  input {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.25);
+    color: #fff; font-size: 0.95rem;
+  }
+  button {
+    margin-top: 18px; width: 100%; padding: 11px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff;
+    font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 4px; }
+  .tab {
+    flex: 1; padding: 8px; text-align: center; border-radius: 8px; cursor: pointer;
+    font-size: 0.8rem; background: rgba(255,255,255,0.05); color: #b3a9d1;
+  }
+  .tab.active { background: rgba(124,58,237,0.35); color: #fff; }
+  .msg { font-size: 0.8rem; margin-top: 12px; padding: 10px 12px; border-radius: 10px; word-break: break-word; }
+  .msg.error { background: rgba(220,38,38,0.15); color: #fca5a5; }
+  .msg.ok { background: rgba(5,150,105,0.15); color: #6ee7b7; }
+  .chat { display: flex; flex-direction: column; height: 60vh; }
+  .chat-log { flex: 1; overflow-y: auto; padding: 4px 0; display: flex; flex-direction: column; gap: 10px; }
+  .bubble { max-width: 85%; padding: 9px 13px; border-radius: 14px; font-size: 0.88rem; white-space: pre-wrap; }
+  .bubble.user { align-self: flex-end; background: linear-gradient(135deg, #7c3aed, #a855f7); }
+  .bubble.assistant { align-self: flex-start; background: rgba(255,255,255,0.08); }
+  .chat-input { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input input { flex: 1; margin: 0; }
+  .chat-input button { margin: 0; width: auto; padding: 10px 16px; }
+  .top-row { display: flex; justify-content: space-between; align-items: center; }
+  .logout { font-size: 0.75rem; color: #b3a9d1; background: none; border: none; width: auto; margin: 0; padding: 4px 8px; text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="card" id="app">Chargement…</div>
 
-  document.getElementById("out").textContent = "Chargement…";
-  client.auth.getSession().then(({ data }) => {
-    document.getElementById("out").textContent = data.session
-      ? "✅ Connecté en tant que : " + data.session.user.email
-      : "Pas encore connecté.";
-  });
+  <script>
+    const SUPABASE_URL = "https://rxesrxpeljcacmvjgonz.supabase.co";
+    const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4ZXNyeHBlbGpjYWNtdmpnb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NDI0NTYsImV4cCI6MjA5OTQxODQ1Nn0.4tmbJiBVGCURTgK-44PKX2jgL6995XroPU826bsFd0I";
 
-  document.getElementById("google").onclick = () => {
-    client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } });
-  };
-</script>
+    const app = document.getElementById("app");
+    let session = null;
+    let otpStep = "email";
+    let otpEmail = "";
+
+    async function api(path, body, extraHeaders = {}) {
+      const res = await fetch(SUPABASE_URL + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: ANON_KEY, ...extraHeaders },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error_description || json.msg || json.error || res.statusText);
+      return json;
+    }
+
+    function renderLogin(activeTab = "password", info = "") {
+      app.innerHTML = `
+        <h1>Lumen AI</h1>
+        <p class="sub">Page de test — connectée à votre vrai projet</p>
+        <div class="tabs">
+          <div class="tab ${activeTab === "password" ? "active" : ""}" data-tab="password">Mot de passe</div>
+          <div class="tab ${activeTab === "otp" ? "active" : ""}" data-tab="otp">Code par email</div>
+        </div>
+        ${activeTab === "password" ? `
+          <label>Email</label>
+          <input id="email" type="email" autocomplete="email" />
+          <label>Mot de passe</label>
+          <input id="password" type="password" autocomplete="current-password" />
+          <button id="loginBtn">Se connecter</button>
+        ` : otpStep === "email" ? `
+          <label>Email</label>
+          <input id="otpEmail" type="email" autocomplete="email" />
+          <button id="sendCodeBtn">Envoyer un code</button>
+        ` : `
+          <p class="sub">Code envoyé à ${otpEmail}</p>
+          <label>Code à 6 chiffres</label>
+          <input id="otpCode" inputmode="numeric" maxlength="6" />
+          <button id="verifyCodeBtn">Vérifier</button>
+        `}
+        ${info ? `<div class="msg ${info.startsWith("Erreur") ? "error" : "ok"}">${info}</div>` : ""}
+      `;
+
+      document.querySelectorAll(".tab").forEach((t) =>
+        t.addEventListener("click", () => {
+          otpStep = "email";
+          renderLogin(t.dataset.tab);
+        })
+      );
+
+      if (activeTab === "password") {
+        document.getElementById("loginBtn").addEventListener("click", async () => {
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+          try {
+            const data = await api("/auth/v1/token?grant_type=password", { email, password });
+            session = { access_token: data.access_token, user: data.user };
+            renderChat(session.user.email);
+          } catch (e) {
+            renderLogin("password", "Erreur : " + e.message);
+          }
+        });
+      } else if (otpStep === "email") {
+        document.getElementById("sendCodeBtn").addEventListener("click", async () => {
+          const email = document.getElementById("otpEmail").value.trim();
+          if (!email) return;
+          try {
+            await api("/auth/v1/otp", { email, create_user: false });
+            otpEmail = email;
+            otpStep = "code";
+            renderLogin("otp", "Code envoyé, vérifiez votre boîte mail.");
+          } catch (e) {
+            renderLogin("otp", "Erreur : " + e.message);
+          }
+        });
+      } else {
+        document.getElementById("verifyCodeBtn").addEventListener("click", async () => {
+          const token = document.getElementById("otpCode").value.trim();
+          try {
+            const data = await api("/auth/v1/verify", { email: otpEmail, token, type: "email" });
+            session = { access_token: data.access_token, user: data.user };
+            renderChat(session.user.email);
+          } catch (e) {
+            renderLogin("otp", "Erreur : " + e.message);
+          }
+        });
+      }
+    }
+
+    function renderChat(userEmail) {
+      app.innerHTML = `
+        <div class="top-row">
+          <div>
+            <h1>Assistant Lumen</h1>
+            <p class="sub">Connecté : ${userEmail}</p>
+          </div>
+          <button class="logout" id="logoutBtn">Déconnexion</button>
+        </div>
+        <div class="chat">
+          <div class="chat-log" id="chatLog"></div>
+          <div class="chat-input">
+            <input id="chatInput" placeholder="Écrivez à Lumen…" />
+            <button id="sendBtn">Envoyer</button>
+          </div>
+        </div>
+        <div id="chatMsg"></div>
+      `;
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        session = null;
+        renderLogin();
+      });
+
+      const log = document.getElementById("chatLog");
+      const input = document.getElementById("chatInput");
+      const msgBox = document.getElementById("chatMsg");
+
+      function addBubble(role, text) {
+        const div = document.createElement("div");
+        div.className = "bubble " + role;
+        div.textContent = text;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      async function send() {
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = "";
+        addBubble("user", text);
+        msgBox.innerHTML = `<div class="msg ok">Lumen réfléchit…</div>`;
+        try {
+          const res = await fetch(SUPABASE_URL + "/functions/v1/ai-assistant", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: ANON_KEY,
+              Authorization: "Bearer " + session.access_token,
+            },
+            body: JSON.stringify({ message: text }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.error) {
+            msgBox.innerHTML = `<div class="msg error">Erreur : ${data.error || res.statusText}</div>`;
+            return;
+          }
+          msgBox.innerHTML = "";
+          addBubble("assistant", data.reply ?? "(réponse vide)");
+        } catch (e) {
+          msgBox.innerHTML = `<div class="msg error">Erreur réseau : ${e.message}</div>`;
+        }
+      }
+
+      document.getElementById("sendBtn").addEventListener("click", send);
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+    }
+
+    renderLogin();
+  </script>
 </body>
 </html>
