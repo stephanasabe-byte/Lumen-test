@@ -137,7 +137,7 @@
           const email = document.getElementById("otpEmail").value.trim();
           if (!email) return;
           try {
-            await api("/auth/v1/otp", { email, create_user: false });
+            await api("/auth/v1/otp", { email, create_user: true });
             otpEmail = email;
             otpStep = "code";
             renderLogin("otp", "Code envoyé, vérifiez votre boîte mail.");
