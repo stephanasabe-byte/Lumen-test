@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="fr">
 <head>
@@ -41,6 +40,10 @@
     background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff;
     font-weight: 600; font-size: 0.95rem; cursor: pointer;
   }
+  button.google {
+    background: #fff; color: #1f1f1f; display: flex; align-items: center;
+    justify-content: center; gap: 8px;
+  }
   button:disabled { opacity: 0.5; cursor: default; }
   .tabs { display: flex; gap: 6px; margin-bottom: 4px; }
   .tab {
@@ -51,6 +54,8 @@
   .msg { font-size: 0.8rem; margin-top: 12px; padding: 10px 12px; border-radius: 10px; word-break: break-word; }
   .msg.error { background: rgba(220,38,38,0.15); color: #fca5a5; }
   .msg.ok { background: rgba(5,150,105,0.15); color: #6ee7b7; }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: #6b6284; font-size: 0.75rem; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.12); }
   .chat { display: flex; flex-direction: column; height: 60vh; }
   .chat-log { flex: 1; overflow-y: auto; padding: 4px 0; display: flex; flex-direction: column; gap: 10px; }
   .bubble { max-width: 85%; padding: 9px 13px; border-radius: 14px; font-size: 0.88rem; white-space: pre-wrap; }
@@ -69,6 +74,7 @@
   <script>
     const SUPABASE_URL = "https://rxesrxpeljcacmvjgonz.supabase.co";
     const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4ZXNyeHBlbGpjYWNtdmpnb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NDI0NTYsImV4cCI6MjA5OTQxODQ1Nn0.4tmbJiBVGCURTgK-44PKX2jgL6995XroPU826bsFd0I";
+    const REDIRECT_URL = window.location.origin + window.location.pathname;
 
     const app = document.getElementById("app");
     let session = null;
@@ -86,10 +92,17 @@
       return json;
     }
 
+    function signInWithGoogle() {
+      const url = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(REDIRECT_URL)}`;
+      window.location.href = url;
+    }
+
     function renderLogin(activeTab = "password", info = "") {
       app.innerHTML = `
         <h1>Lumen AI</h1>
         <p class="sub">Page de test — connectée à votre vrai projet</p>
+        <button class="google" id="googleBtn">Continuer avec Google</button>
+        <div class="divider">ou</div>
         <div class="tabs">
           <div class="tab ${activeTab === "password" ? "active" : ""}" data-tab="password">Mot de passe</div>
           <div class="tab ${activeTab === "otp" ? "active" : ""}" data-tab="otp">Code par email</div>
@@ -112,6 +125,8 @@
         `}
         ${info ? `<div class="msg ${info.startsWith("Erreur") ? "error" : "ok"}">${info}</div>` : ""}
       `;
+
+      document.getElementById("googleBtn").addEventListener("click", signInWithGoogle);
 
       document.querySelectorAll(".tab").forEach((t) =>
         t.addEventListener("click", () => {
@@ -179,6 +194,7 @@
       `;
       document.getElementById("logoutBtn").addEventListener("click", () => {
         session = null;
+        window.location.hash = "";
         renderLogin();
       });
 
@@ -226,7 +242,32 @@
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
     }
 
-    renderLogin();
+    // After a Google redirect, Supabase appends the tokens to the URL hash:
+    // #access_token=...&refresh_token=...&...
+    function checkOAuthRedirect() {
+      if (window.location.hash.includes("access_token=")) {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const accessToken = params.get("access_token");
+        if (accessToken) {
+          fetch(SUPABASE_URL + "/auth/v1/user", {
+            headers: { apikey: ANON_KEY, Authorization: "Bearer " + accessToken },
+          })
+            .then((r) => r.json())
+            .then((user) => {
+              session = { access_token: accessToken, user };
+              window.history.replaceState(null, "", window.location.pathname);
+              renderChat(user.email);
+            })
+            .catch(() => renderLogin("password", "Erreur : impossible de récupérer le profil Google."));
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (!checkOAuthRedirect()) {
+      renderLogin();
+    }
   </script>
 </body>
 </html>
