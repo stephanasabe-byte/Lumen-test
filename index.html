@@ -217,7 +217,7 @@
         addBubble("user", text);
         msgBox.innerHTML = `<div class="msg ok">Lumen réfléchit…</div>`;
         try {
-          const res = await fetch(SUPABASE_URL + "/functions/v1/ai-assistant", {
+          const res = await fetch(SUPABASE_URL + "/functions/v1/ai-assistant-", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
